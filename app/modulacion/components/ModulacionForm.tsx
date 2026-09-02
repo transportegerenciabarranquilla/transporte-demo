@@ -7,7 +7,7 @@ import { normalizeDt } from "../../lib/modulacionStorage";
 import type { Vehiculo } from "../../seguimiento/types";
 import { NumericField } from "./NumericField";
 
-const contractors = ["Punto Corona", "Logisticos", "Surti Cervezas"];
+const contractors = ["Logisticos"];
 
 export function ModulacionForm({
   clienteError,
@@ -213,7 +213,7 @@ export function ModulacionForm({
 
       {submitted ? (
         <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-          <p className="font-semibold">Modulacion registrada en Supabase.</p>
+          <p className="font-semibold">Modulación registrada correctamente.</p>
           <p className="mt-1">El registro queda disponible para seguimiento.</p>
         </div>
       ) : null}

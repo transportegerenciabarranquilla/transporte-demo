@@ -1,4 +1,4 @@
-import { contractorSiteName, isLogisticosContractor, isPuntoCoronaContractor, normalizeContractorName } from "../lib/contractors";
+﻿import { contractorSiteName, isLogisticosContractor, isPuntoCoronaContractor, normalizeContractorName } from "../lib/contractors";
 
 export type PortalModule = {
   id: number;
@@ -69,15 +69,6 @@ const adminRangoModule: PortalModule = {
   detail: "Historial global y por contratista",
 };
 
-const peopleAttendanceModule: PortalModule = {
-  id: 6,
-  title: "Asistencia personas",
-  href: "/asistencia-personas",
-  detail: "Excel, llegadas y contratistas",
-  tone: "from-[#0f7c58] to-[#f5bd19]",
-  accent: "border-l-[#0f7c58]",
-};
-
 const managementModule: PortalModule = {
   id: 8,
   title: "Gerencia",
@@ -109,8 +100,8 @@ export function getVisiblePortalModules({
   const routedModules = modules.map((module) => ({ ...module, href: getModuleHref(module.href, contractor) }));
   const baseModules = canSeeJornada ? routedModules : routedModules.filter((module) => module.href !== "/jornada-laboral");
   if (isPeople) return [peopleModule, peopleDelaysModule, managementModule, peopleNpsModule];
-  if (isAdmin) return [{ ...baseModules[0], href: "/admin" }, managementModule, adminRangoModule, peopleAttendanceModule, ...baseModules.slice(1)];
-  return contractor ? [...baseModules, rangoModule] : baseModules;
+  if (isAdmin) return [{ ...baseModules[0], href: "/admin" }, managementModule, adminRangoModule, ...baseModules.slice(1)];
+  return contractor ? [...baseModules, rangoModule, peopleNpsModule] : baseModules;
 }
 
 function getModuleHref(href: string, contractor?: string) {
@@ -132,3 +123,4 @@ export function getPortalHeroCopy(isPeople?: boolean) {
     ? "Consulta trabajadores, fotos de reconocimiento e historial operativo por contratista y sede."
     : "Accede rapido a los modulos activos sin pantallas de bienvenida ni cruces entre contratistas.";
 }
+

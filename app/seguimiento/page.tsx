@@ -246,12 +246,12 @@ export default function SeguimientoPage() {
     }
 
     pendingLocalSaveRef.current = true;
-    setImportMessage("Guardando salida tardia en Supabase...");
+    setImportMessage("Guardando salida tardía...");
 
     try {
       const savedRecords = await saveSeguimientoVehiculos(prepared);
       setVehiculos(savedRecords);
-      setImportMessage("Salida tardia guardada en Supabase.");
+      setImportMessage("Salida tardía guardada.");
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "No se pudo guardar la salida tardia.");
       throw error;
@@ -379,7 +379,7 @@ export default function SeguimientoPage() {
       setVehiculoSeleccionadoKey(null);
     }
     setDeleteCandidateKey(null);
-    setImportMessage("Borrando DT en Supabase...");
+    setImportMessage("Borrando DT...");
 
     try {
       const savedRecords = await saveSeguimientoVehiculos(prepared, { deleteMissing: true });
@@ -403,13 +403,13 @@ export default function SeguimientoPage() {
         return;
       }
 
-      setImportMessage("Guardando seguimiento en Supabase...");
+      setImportMessage("Guardando seguimiento...");
 
       const prepared = prepareSeguimientoVehicles(mergeVehiclesByDt(vehiculos, imported));
       const savedRecords = await saveSeguimientoVehiculos(prepared);
 
       setVehiculos(savedRecords);
-      setImportMessage(`${imported.length} registros guardados en Supabase desde ${file.name}.`);
+      setImportMessage(`${imported.length} registros guardados desde ${file.name}.`);
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : "No se pudo leer el archivo.");
     }

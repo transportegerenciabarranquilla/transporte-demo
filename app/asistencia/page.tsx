@@ -253,7 +253,7 @@ export default function AsistenciaPage() {
 
           {submitted ? (
             <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              <p className="font-semibold">Asistencia guardada en Supabase.</p>
+              <p className="font-semibold">Asistencia guardada correctamente.</p>
               <p className="mt-1">
                 Llave: <strong>{createAttendanceKey(submitted.contratista, submitted.dt, getLocalDateKey())}</strong>
               </p>

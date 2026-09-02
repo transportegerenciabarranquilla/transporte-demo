@@ -1,0 +1,68 @@
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 2/3...
+
+
+Retrying 2/3...
+
+
+Retrying 3/3...
+
+
+Retrying 3/3...
+AggregateError: 
+    at ignore-listed frames {
+  code: 'EACCES',
+  [errors]: [
+    Error: connect EACCES 2607:f8b0:400c:c32::5f:443
+        at <unknown> (Error: connect EACCES 2607:f8b0:400c:c32::5f:443) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '2607:f8b0:400c:c32::5f',
+      port: 443
+    },
+    Error: connect EACCES 142.251.107.95:443
+        at <unknown> (Error: connect EACCES 142.251.107.95:443) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '142.251.107.95',
+      port: 443
+    }
+  ]
+}
+⨯ Failed to download `Geist` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Geist` from Google Fonts.}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'EACCES',
+  [errors]: [
+    Error: connect EACCES 2607:f8b0:400c:c32::5f:443
+        at <unknown> (Error: connect EACCES 2607:f8b0:400c:c32::5f:443) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '2607:f8b0:400c:c32::5f',
+      port: 443
+    },
+    Error: connect EACCES 142.251.107.95:443
+        at <unknown> (Error: connect EACCES 142.251.107.95:443) {
+      errno: -4092,
+      code: 'EACCES',
+      syscall: 'connect',
+      address: '142.251.107.95',
+      port: 443
+    }
+  ]
+}
+⨯ Failed to download `Geist Mono` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Geist Mono` from Google Fonts.}

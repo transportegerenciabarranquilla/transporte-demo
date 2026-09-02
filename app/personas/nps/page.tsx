@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -61,8 +61,8 @@ const NPS_REPORT_CACHE_TTL_MS = 30 * 60 * 1_000;
 
 export default function NpsPage() {
   const router = useRouter();
-  const [allowed, setAllowed] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [allowed] = useState(true);
+  const [checkingSession] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<NpsData | null>(null);
@@ -73,19 +73,11 @@ export default function NpsPage() {
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/session/session", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((body) => {
-        if (!body?.session?.isPeople && !body?.session?.isAdmin) throw new Error("Este módulo es exclusivo de People.");
-        const cached = readCachedNpsReport();
-        if (cached) {
-          setFilters(cached.filters);
-          setData(cached.data);
-        }
-        setAllowed(true);
-      })
-      .catch((caught) => setError(caught instanceof Error ? caught.message : "No se pudo abrir NPS."))
-      .finally(() => setCheckingSession(false));
+    const cached = readCachedNpsReport();
+    if (cached) {
+      setFilters(cached.filters);
+      setData(cached.data);
+    }
   }, []);
 
   useEffect(() => {
@@ -102,6 +94,7 @@ export default function NpsPage() {
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error || "No se pudo consultar la tabla NPS.");
+        if (!body.summary || !body.segments || !body.trends) throw new Error("La fuente NPS no devolvió un informe válido.");
         const nextData = body as NpsData;
         setData(nextData);
         writeCachedNpsReport({ data: nextData, filters, storedAt: Date.now() });
@@ -159,20 +152,20 @@ export default function NpsPage() {
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#e5eff2] text-[#235b66]"><Database size={21} /></span>
-              <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#527180]">Repositorio central</p><h2 className="mt-1 text-xl font-semibold text-[#0b2235]">Consolidado histórico NPS</h2><p className="mt-1 text-sm text-slate-500">Todas las cifras visibles se calculan desde Supabase.</p></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#527180]">Repositorio central</p><h2 className="mt-1 text-xl font-semibold text-[#0b2235]">Consolidado histórico NPS</h2><p className="mt-1 text-sm text-slate-500">Todas las cifras visibles corresponden al periodo seleccionado.</p></div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700"><CheckCircle2 size={17} />Tabla {data?.source.table || "NPS"} conectada</span>
+              <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700"><CheckCircle2 size={17} />Tabla {data?.source?.table || "NPS"} conectada</span>
               <input accept=".xlsx,.xls" className="hidden" onChange={(event) => void handleNpsUpload(event.target.files?.[0])} ref={uploadInputRef} type="file" />
               <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#0b2235] px-4 text-sm font-semibold text-white transition hover:bg-[#173f59] disabled:cursor-wait disabled:bg-slate-400" disabled={uploading} onClick={() => uploadInputRef.current?.click()} type="button"><Upload size={16} />{uploading ? "Importando…" : "Subir Excel NPS"}</button>
             </div>
           </div>
           {uploadMessage ? <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-2.5 text-xs font-semibold text-emerald-700">{uploadMessage}</div> : null}
           <div className="grid border-t border-slate-200 bg-[#f7f9fa] sm:grid-cols-4">
-            <RepositoryStat label="Filas almacenadas" value={formatNumber(data?.source.rawRowCount || 0)} />
-            <RepositoryStat label="Encuestas únicas" value={formatNumber(data?.source.respondentCount || 0)} />
-            <RepositoryStat label="Primera encuesta" value={formatDate(data?.source.minDate)} />
-            <RepositoryStat label="Última encuesta" value={formatDate(data?.source.maxDate)} />
+            <RepositoryStat label="Filas almacenadas" value={formatNumber(data?.source?.rawRowCount || 0)} />
+            <RepositoryStat label="Encuestas únicas" value={formatNumber(data?.source?.respondentCount || 0)} />
+            <RepositoryStat label="Primera encuesta" value={formatDate(data?.source?.minDate)} />
+            <RepositoryStat label="Última encuesta" value={formatDate(data?.source?.maxDate)} />
           </div>
         </section>
 
@@ -200,7 +193,7 @@ export default function NpsPage() {
           <TrendChart eyebrow="Seguimiento semanal" mode="columns" rows={data?.trends.weeks || []} title="NPS por semana" />
           <TrendChart eyebrow="Evolución del mes actual" mode="line" rows={data?.trends.currentDays || []} title="NPS por día" />
         </div>
-        <DailyRatingsChart filters={filters} rows={data?.trends.currentDays || []} sourceMaxDate={data?.source.maxDate} />
+        <DailyRatingsChart filters={filters} rows={data?.trends.currentDays || []} sourceMaxDate={data?.source?.maxDate} />
         <DeliveryExperienceChart series={data?.trends.annual || []} />
 
         <SectionHeader id="causas" index="03" title="Causas y factores de impacto" description="Drivers registrados en las encuestas filtradas." />
@@ -1149,7 +1142,13 @@ function readCachedNpsReport() {
     const raw = sessionStorage.getItem(NPS_REPORT_CACHE_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedNpsReport;
-    if (!cached?.data || !cached?.filters || Date.now() - cached.storedAt > NPS_REPORT_CACHE_TTL_MS) {
+    if (
+      !cached?.data?.summary ||
+      !cached.data.segments ||
+      !cached.data.trends ||
+      !cached?.filters ||
+      Date.now() - cached.storedAt > NPS_REPORT_CACHE_TTL_MS
+    ) {
       sessionStorage.removeItem(NPS_REPORT_CACHE_KEY);
       return null;
     }
@@ -1165,3 +1164,4 @@ function writeCachedNpsReport(report: CachedNpsReport) {
     // El informe sigue funcionando aunque el navegador bloquee sessionStorage.
   }
 }
+

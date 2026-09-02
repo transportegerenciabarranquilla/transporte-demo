@@ -8,7 +8,9 @@ import {
   type ModulacionRegistro,
 } from "../lib/modulacionStorage";
 import type { AsistenciaRegistro } from "../lib/asistenciaStorage";
+import { normalizeContractorName } from "../lib/contractors";
 import type { Vehiculo } from "../seguimiento/types";
+import { loadSeguimientoVehiculos } from "../seguimiento/services/vehicleRecords";
 import { initialForm } from "../modulacion/constants";
 import type { FormErrors, FormState } from "../modulacion/types";
 import { validateModulacion } from "../modulacion/utils";
@@ -68,6 +70,15 @@ export default function RegistroModulacionPage() {
           const matchedVehicles = Array.isArray(seguimientoBody.records)
             ? seguimientoBody.records.filter((vehicle: Vehiculo) => isTodayVehicle(vehicle) && normalizeDt(vehicle.transporte) === dt)
             : [];
+          if (!matchedVehicles.length) {
+            const trackingVehicles = loadSeguimientoVehiculos().filter(
+              (vehicle) =>
+                isTodayVehicle(vehicle) &&
+                normalizeDt(vehicle.transporte) === dt &&
+                normalizeContractorName(vehicle.transportista) === normalizeContractorName(contratista),
+            );
+            matchedVehicles.push(...trackingVehicles);
+          }
           const matchedAttendance = asistenciaResponse.ok && Array.isArray(asistenciaBody.records)
             ? (asistenciaBody.records as AsistenciaRegistro[]).find((record) => normalizeDt(record.dt) === dt)
             : null;
@@ -196,6 +207,21 @@ export default function RegistroModulacionPage() {
     }
     if (!form.contratista) return;
 
+    const trackingPerson = vehiculosSeguimiento.find(
+      (vehicle) => String(vehicle.cedulaResponsable || "").replace(/\D/g, "") === cedula,
+    );
+    if (trackingPerson) {
+      const timeout = window.setTimeout(() => {
+        setModuladorError("");
+        setLoadingModulador(false);
+        setForm((current) => ({
+          ...current,
+          personaNombre: trackingPerson.nombreResponsable || trackingPerson.responsable || current.personaNombre,
+        }));
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setLoadingModulador(true);
@@ -231,12 +257,18 @@ export default function RegistroModulacionPage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [form.contratista, form.persona]);
+  }, [form.contratista, form.persona, vehiculosSeguimiento]);
 
   const selectedVehicle = useMemo(() => {
     const dt = normalizeDt(form.dt);
     return vehiculosSeguimiento.find((vehiculo) => normalizeDt(vehiculo.transporte) === dt) ?? null;
   }, [form.dt, vehiculosSeguimiento]);
+  const selectedResponsibleName =
+    selectedVehicle &&
+    String(selectedVehicle.cedulaResponsable || "").replace(/\D/g, "") === form.persona.replace(/\D/g, "")
+      ? selectedVehicle.nombreResponsable || selectedVehicle.responsable || ""
+      : "";
+  const resolvedPersonaName = form.personaNombre || selectedResponsibleName;
 
   function updateField<Key extends keyof FormState>(key: Key, value: FormState[Key]) {
     setForm((current) => ({
@@ -258,7 +290,7 @@ export default function RegistroModulacionPage() {
     } else if (!selectedVehicle) {
       nextErrors.dt = vehiclesError || "El DT no esta validado o no esta cargado para hoy.";
     }
-    if (form.persona.trim() && !form.personaNombre.trim()) {
+    if (form.persona.trim() && !resolvedPersonaName.trim()) {
       nextErrors.persona = moduladorError || "Busca una cédula válida del modulador.";
     }
     setErrors(nextErrors);
@@ -273,6 +305,7 @@ export default function RegistroModulacionPage() {
       fechaDt: selectedVehicle?.fechaDt || selectedVehicle?.fechaDespacho || selectedVehicle?.date,
       cajasGestionadas: "0",
       persona: form.persona.trim(),
+      personaNombre: resolvedPersonaName.trim(),
       comentario: form.comentario.trim(),
       createdAt: new Date().toISOString(),
     };
@@ -300,11 +333,11 @@ export default function RegistroModulacionPage() {
         <ModulacionForm
           errors={errors}
           clienteError={clienteError}
-          form={form}
+          form={{ ...form, personaNombre: resolvedPersonaName }}
           loadingCliente={loadingCliente}
           loadingModulador={loadingModulador}
           loadingVehicles={loadingVehicles}
-          moduladorError={moduladorError}
+          moduladorError={resolvedPersonaName ? "" : moduladorError}
           onChange={updateField}
           onSubmit={handleSubmit}
           saveError={saveError}

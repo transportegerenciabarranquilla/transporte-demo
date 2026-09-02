@@ -1,37 +1,50 @@
 import { NextResponse } from "next/server";
-import { ACCESS_COOKIE, getAuthCookieOptions, REFRESH_COOKIE, REMEMBER_COOKIE } from "../../../lib/authServer";
-import { contractorForEmail, isAdminEmail, isPeopleEmail } from "../../../lib/contractors";
-import { requireSupabaseKey, SUPABASE_URL } from "../../../lib/supabaseServer";
 
-type LoginResponse = { access_token?: string; refresh_token?: string; expires_in?: number; user?: { email?: string }; error_description?: string; msg?: string };
+const LOCAL_USERS = {
+  "logisticos@gmail.com": {
+    password: "123456",
+    contractor: "Logisticos",
+    isAdmin: false,
+    isPeople: false,
+    sessionValue: "logisticos",
+  },
+  "people@transporte.com": {
+    password: "123456",
+    contractor: "People",
+    isAdmin: false,
+    isPeople: true,
+    sessionValue: "people",
+  },
+  "admin@gmail.com": {
+    password: "123456",
+    contractor: "Admin",
+    isAdmin: true,
+    isPeople: false,
+    sessionValue: "admin",
+  },
+} as const;
 
 export async function POST(request: Request) {
-  const { email, password, remember } = (await request.json()) as { email?: string; password?: string; remember?: boolean };
-  const normalizedEmail = email?.trim().toLowerCase() || "";
-  const contractor = contractorForEmail(normalizedEmail);
-  if (!contractor) return NextResponse.json({ error: "Este correo no tiene una empresa asignada." }, { status: 403 });
+  const body = await request.json().catch(() => ({}));
+  const email = String(body.email || "").trim().toLowerCase();
+  const password = String(body.password || "");
+  const user = LOCAL_USERS[email as keyof typeof LOCAL_USERS];
 
-  const supabaseKey = requireSupabaseKey();
-  const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: supabaseKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ email: normalizedEmail, password }),
-    cache: "no-store",
-  });
-  const body = (await authResponse.json().catch(() => ({}))) as LoginResponse;
-  if (!authResponse.ok || !body.access_token) {
-    return NextResponse.json({ error: body.error_description || body.msg || "Correo o contraseña incorrectos." }, { status: 401 });
+  if (!user || user.password !== password) {
+    return NextResponse.json({ error: "Correo o contraseña incorrectos." }, { status: 401 });
   }
 
   const response = NextResponse.json({
-    email: normalizedEmail,
-    contractor,
-    isAdmin: isAdminEmail(normalizedEmail),
-    isPeople: isPeopleEmail(normalizedEmail),
+    contractor: user.contractor,
+    email,
+    isAdmin: user.isAdmin,
+    isPeople: user.isPeople,
   });
-  const maxAge = remember ? body.expires_in || 3600 : undefined;
-  response.cookies.set(ACCESS_COOKIE, body.access_token, getAuthCookieOptions(maxAge));
-  response.cookies.set(REMEMBER_COOKIE, remember ? "true" : "false", getAuthCookieOptions(remember ? 60 * 60 * 24 * 30 : undefined));
-  if (body.refresh_token) response.cookies.set(REFRESH_COOKIE, body.refresh_token, getAuthCookieOptions(remember ? 60 * 60 * 24 * 30 : undefined));
+  response.cookies.set("local_session", user.sessionValue, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: body.remember ? 60 * 60 * 24 * 30 : undefined,
+  });
   return response;
 }

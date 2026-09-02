@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarDays, FileSpreadsheet, MessageSquareText, Search, Upload, Users, X } from "lucide-react";
+import { demoClockRows } from "../lib/demoData";
 
 type PersonHistory = {
   type: string;
@@ -930,7 +931,33 @@ function persistAttendance(payload: StoredAttendance) {
 function readStoredAttendance() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      const rows: AttendanceRow[] = demoClockRows().map((row, index) => {
+        const parts = row.nombreCompleto.split(" ");
+        const entradaMinutes = Number(row.entrada.slice(0, 2)) * 60 + Number(row.entrada.slice(3, 5));
+        const estadoLlegada: AttendanceStatus = entradaMinutes <= 350 ? "bien" : entradaMinutes <= 380 ? "regular" : "mal";
+        return {
+          apellidos: parts.slice(1).join(" "),
+          nombres: parts[0] || row.nombreCompleto,
+          identificador: row.identificador,
+          grupo: row.grupo,
+          fecha: row.fechaKey,
+          fechaKey: row.fechaKey,
+          permiso: "",
+          turno: row.turno,
+          entrada: row.entrada,
+          atraso: estadoLlegada === "bien" ? "00:00" : `00:${String(5 + index).padStart(2, "0")}`,
+          salida: row.salida,
+          cargo: row.cargo,
+          nombreCompleto: row.nombreCompleto,
+          contratista: row.contratista,
+          estadoLlegada,
+        };
+      });
+      const demo = { fileName: "asistencia-personas-demo.xlsx", savedAt: new Date().toISOString(), rows };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+      return demo;
+    }
     const parsed = JSON.parse(raw) as StoredAttendance;
     if (!Array.isArray(parsed.rows)) return null;
     return parsed;

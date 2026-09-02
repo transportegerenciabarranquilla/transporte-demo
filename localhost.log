@@ -1,0 +1,17 @@
+
+> seguimiento-vehiculos@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.2.9 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.64:3000
+✓ Ready in 1006ms
+
+○ Compiling / ...
+ GET / 200 in 5.4s (next.js: 5.2s, application-code: 192ms)
+ GET / 200 in 195ms (next.js: 100ms, application-code: 96ms)
+ GET /api/session/session 200 in 591ms (next.js: 379ms, proxy.ts: 194ms, application-code: 18ms)
+ GET /personas/nps 200 in 2.1s (next.js: 2.1s, application-code: 52ms)
+ GET /api/people/nps? 200 in 452ms (next.js: 418ms, proxy.ts: 16ms, application-code: 19ms)
+ GET /personas/nps 200 in 263ms (next.js: 45ms, application-code: 217ms)
+[?25h

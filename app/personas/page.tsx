@@ -216,11 +216,11 @@ export default function PeoplePage() {
         cache: "no-store",
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || "No se pudo guardar en Supabase.");
+      if (!response.ok) throw new Error(body.error || "No se pudo guardar el registro.");
       applyProfiles(body.profiles || nextProfiles);
       setError("");
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "No se pudo guardar en Supabase.");
+      setError(caughtError instanceof Error ? caughtError.message : "No se pudo guardar el registro.");
     }
   }
 

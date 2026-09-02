@@ -1,25 +1,25 @@
-import type { BackupPayload, PinRecord, TdSnapshot } from "./types";
+import type { BackupPayload, CrewMember, CrewRole, PinRecord, TdRow, TdSnapshot, TdStatus } from "./types";
 
-const ENDPOINT = "/api/people/atrasos";
+const SNAPSHOTS_KEY = "people.control.td.snapshots";
+const PIN_KEY = "people.control.td.pin";
 
 export async function listSnapshots(): Promise<TdSnapshot[]> {
-  const body = await requestJson(ENDPOINT);
-  const snapshots = Array.isArray(body.snapshots) ? (body.snapshots as TdSnapshot[]) : [];
+  const snapshots = readSnapshots();
   const incomplete = snapshots.filter(isIncompleteSnapshot);
   for (const snapshot of incomplete) await deleteSnapshot(snapshot.id);
   return snapshots.filter((snapshot) => !isIncompleteSnapshot(snapshot));
 }
 
 export async function saveSnapshot(snapshot: TdSnapshot) {
-  await requestJson(ENDPOINT, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ snapshot }),
-  });
+  const snapshots = readSnapshots();
+  const index = snapshots.findIndex((item) => item.id === snapshot.id);
+  if (index >= 0) snapshots[index] = snapshot;
+  else snapshots.unshift(snapshot);
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
 }
 
 export async function deleteSnapshot(id: string) {
-  await requestJson(`${ENDPOINT}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(readSnapshots().filter((snapshot) => snapshot.id !== id)));
 }
 
 export async function findSnapshotByHash(hash: string) {
@@ -38,21 +38,16 @@ function isIncompleteSnapshot(snapshot: TdSnapshot) {
 }
 
 export async function getPinRecord(): Promise<PinRecord | null> {
-  const body = await requestJson(`${ENDPOINT}?resource=settings`);
-  return body.pin ?? null;
+  return readJson<PinRecord | null>(PIN_KEY, null);
 }
 
 export async function savePinRecord(record: PinRecord) {
-  await requestJson(ENDPOINT, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pin: record }),
-  });
+  localStorage.setItem(PIN_KEY, JSON.stringify(record));
 }
 
 export async function clearApplicationData() {
-  await requestJson(ENDPOINT, { method: "DELETE" });
-  await requestJson(`${ENDPOINT}?resource=settings`, { method: "DELETE" });
+  localStorage.removeItem(SNAPSHOTS_KEY);
+  localStorage.removeItem(PIN_KEY);
 }
 
 export async function createBackup(): Promise<BackupPayload> {
@@ -64,9 +59,83 @@ export async function restoreBackup(payload: BackupPayload) {
   for (const snapshot of payload.snapshots) await saveSnapshot(snapshot);
 }
 
-async function requestJson(url: string, init: RequestInit = {}) {
-  const response = await fetch(url, { ...init, cache: "no-store" });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "No fue posible conectar con Supabase.");
-  return body;
+function readSnapshots() {
+  const stored = readJson<TdSnapshot[]>(SNAPSHOTS_KEY, []);
+  if (stored.length) return stored;
+  const seeded = buildInitialSnapshots();
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? (JSON.parse(value) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function buildInitialSnapshots(): TdSnapshot[] {
+  const now = new Date();
+  const operationalDate = localDate(now);
+  const names = [
+    ["Carlos Mendoza", "Andrés Pérez", "Miguel Torres"],
+    ["Luis Herrera", "Daniel Rojas", "Jorge Castillo"],
+    ["Ricardo Gómez", "Felipe Díaz", "Óscar Martínez"],
+    ["Samuel Castro", "Kevin León", "Iván Ramírez"],
+  ];
+  const snapshots = [0, 1, 2].map((cut) => {
+    const uploaded = new Date(now.getTime() - (2 - cut) * 55 * 60 * 1000);
+    const rows: TdRow[] = Array.from({ length: 8 }, (_, index) => {
+      const people = names[index % names.length];
+      const base = 210 + index * 35 + cut * 18;
+      const member = (role: CrewRole, name: string, offset: number): CrewMember => {
+        const tdSeconds = base + offset;
+        const status: TdStatus = tdSeconds <= 300 ? "bien" : tdSeconds <= 600 ? "regular" : "mal";
+        return { role, name, document: `10010${index}${offset}`, arrivalSeconds: 21600 + index * 120, tdSeconds, status, validPerson: true };
+      };
+      return {
+        id: `ruta-${cut}-${index}`,
+        dt: String(1760 + index),
+        trip: "Viaje 1",
+        plate: `KLM-${101 + index}`,
+        responsible: people[0],
+        dispatchDate: operationalDate,
+        dtDate: operationalDate,
+        routeStatus: index < 5 ? "EN RUTA" : "FINALIZADA",
+        clients: 26 + index,
+        visited: 10 + index * 2,
+        boxes: 480 + index * 25,
+        hectoliters: 105 + index * 4,
+        departureSeconds: 23400 + index * 180,
+        lateDepartureCause: "",
+        lateDepartureComment: "",
+        routeArrival: "",
+        routeTime: "",
+        plannedTime: "08:00",
+        territory: index % 2 ? "Galapa" : "Barranquilla",
+        carrier: "Logísticos",
+        crew: {
+          rr: member("rr", people[0], 0),
+          aux: member("aux", people[1], 45),
+          conductor: member("conductor", people[2], 85),
+        },
+      };
+    });
+    return {
+      id: `corte-${operationalDate}-${cut + 1}`,
+      fileName: `Control_DT_${operationalDate}_${cut + 1}.xlsx`,
+      fileHash: `local-${operationalDate}-${cut + 1}`,
+      operationalDate,
+      uploadedAt: uploaded.toISOString(),
+      rows,
+      warnings: [],
+    };
+  });
+  return snapshots.reverse();
+}
+
+function localDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
