@@ -11,18 +11,22 @@ export function PortalDashboard({
   onLogout,
   isAdmin = false,
   isPeople = false,
+  isPresentation = false,
   contractor = "",
 }: {
   onLogout: () => void;
   isAdmin?: boolean;
   isPeople?: boolean;
+  isPresentation?: boolean;
   contractor?: string;
 }) {
   const router = useRouter();
-  const visibleModules = getVisiblePortalModules({ contractor, isAdmin, isPeople });
-  const sessionLabel = getPortalSessionLabel({ contractor, isAdmin, isPeople });
-  const heroTitle = isPeople ? "Gestion de personas por contratista" : `Gestion central para ${isAdmin ? "toda la operacion" : sessionLabel}`;
-  const heroCopy = getPortalHeroCopy(isPeople);
+  const visibleModules = getVisiblePortalModules({ contractor, isAdmin, isPeople, isPresentation });
+  const sessionLabel = getPortalSessionLabel({ contractor, isAdmin, isPeople, isPresentation });
+  const heroTitle = isPresentation ? "Todos los modulos listos para presentar" : isPeople ? "Gestion de personas por contratista" : `Gestion central para ${isAdmin ? "toda la operacion" : sessionLabel}`;
+  const heroCopy = isPresentation
+    ? "Recorre toda la experiencia demo desde la cuenta de Logísticos, sin cambiar de usuario durante la presentación."
+    : getPortalHeroCopy(isPeople);
 
   return (
     <main className="min-h-screen text-slate-900">

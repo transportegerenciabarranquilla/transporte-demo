@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Transport Barranquilla",
+  title: "Torre Suprema",
   description: "Centro operativo para seguimiento, modulacion y jornada laboral.",
 };
 

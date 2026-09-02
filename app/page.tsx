@@ -7,7 +7,7 @@ import { cacheContractor } from "./lib/contractorBranding";
 import { clearRemoteCache } from "./lib/remoteStore";
 
 type LoginForm = { email: string; password: string; remember: boolean };
-type SessionState = { email: string; contractor: string; isAdmin?: boolean; isPeople?: boolean } | null;
+type SessionState = { email: string; contractor: string; isAdmin?: boolean; isPeople?: boolean; isPresentation?: boolean } | null;
 
 export default function Home() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -40,7 +40,7 @@ export default function Home() {
     if (!response.ok) throw new Error(body.error || "No se pudo iniciar sesión.");
     clearRemoteCache();
     cacheContractor(body.contractor);
-    setSession({ email: body.email, contractor: body.contractor, isAdmin: body.isAdmin, isPeople: body.isPeople });
+    setSession({ email: body.email, contractor: body.contractor, isAdmin: body.isAdmin, isPeople: body.isPeople, isPresentation: body.isPresentation });
     setIsLoggedIn(true);
   }
 
@@ -62,6 +62,7 @@ export default function Home() {
         onLogout={handleLogout}
         isAdmin={Boolean(session?.isAdmin)}
         isPeople={Boolean(session?.isPeople)}
+        isPresentation={Boolean(session?.isPresentation)}
         contractor={session?.contractor || ""}
       />
     );

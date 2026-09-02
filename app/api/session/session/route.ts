@@ -5,8 +5,9 @@ const LOCAL_SESSIONS = {
   logisticos: {
     contractor: "Logisticos",
     email: "logisticos@gmail.com",
-    isAdmin: false,
-    isPeople: false,
+    isAdmin: true,
+    isPeople: true,
+    isPresentation: true,
   },
   people: {
     contractor: "People",

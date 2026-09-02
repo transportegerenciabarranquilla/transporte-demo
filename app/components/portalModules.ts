@@ -100,14 +100,28 @@ export function getVisiblePortalModules({
   contractor,
   isAdmin,
   isPeople,
+  isPresentation,
 }: {
   contractor?: string;
   isAdmin?: boolean;
   isPeople?: boolean;
+  isPresentation?: boolean;
 }) {
   const canSeeJornada = Boolean(isAdmin || isLogisticosContractor(contractor));
   const routedModules = modules.map((module) => ({ ...module, href: getModuleHref(module.href, contractor) }));
   const baseModules = canSeeJornada ? routedModules : routedModules.filter((module) => module.href !== "/jornada-laboral");
+  if (isPresentation) {
+    return [
+      { ...baseModules[0], href: "/admin", detail: "Control global de rutas, alertas y operación" },
+      managementModule,
+      adminRangoModule,
+      ...baseModules.slice(1),
+      peopleModule,
+      peopleDelaysModule,
+      peopleNpsModule,
+      peopleRtiModule,
+    ];
+  }
   if (isPeople) return [peopleModule, peopleDelaysModule, managementModule, peopleNpsModule, peopleRtiModule];
   if (isAdmin) return [{ ...baseModules[0], href: "/admin" }, managementModule, adminRangoModule, ...baseModules.slice(1)];
   if (!contractor) return baseModules;
@@ -121,7 +135,8 @@ function getModuleHref(href: string, contractor?: string) {
   return href;
 }
 
-export function getPortalSessionLabel({ contractor, isAdmin, isPeople }: { contractor?: string; isAdmin?: boolean; isPeople?: boolean }) {
+export function getPortalSessionLabel({ contractor, isAdmin, isPeople, isPresentation }: { contractor?: string; isAdmin?: boolean; isPeople?: boolean; isPresentation?: boolean }) {
+  if (isPresentation) return `${contractor || "Logisticos"} - Presentación demo`;
   if (isPeople) return "People Transporte";
   if (isAdmin) return "Administrador";
   if (!contractor) return "Operacion en tiempo real";

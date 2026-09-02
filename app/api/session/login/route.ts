@@ -4,8 +4,9 @@ const LOCAL_USERS = {
   "logisticos@gmail.com": {
     password: "123456",
     contractor: "Logisticos",
-    isAdmin: false,
-    isPeople: false,
+    isAdmin: true,
+    isPeople: true,
+    isPresentation: true,
     sessionValue: "logisticos",
   },
   "people@transporte.com": {
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     email,
     isAdmin: user.isAdmin,
     isPeople: user.isPeople,
+    isPresentation: "isPresentation" in user && user.isPresentation,
   });
   response.cookies.set("local_session", user.sessionValue, {
     httpOnly: true,
