@@ -23,7 +23,19 @@ const rows: Persona[] = [
   ...dummyNames.map((NOMBRE, index) => ({
     CC: `100000${index}`,
     NOMBRE,
-    CARGO: index < 2 ? "Conductor" : "Auxiliar",
+    CARGO: "Responsable de ruta",
+    CONTRATISTA: "Logísticos",
+  })),
+  ...dummyNames.map((_, index) => ({
+    CC: `200000${index}`,
+    NOMBRE: `Conductor ${index + 1}`,
+    CARGO: "Conductor",
+    CONTRATISTA: "Logísticos",
+  })),
+  ...dummyNames.map((_, index) => ({
+    CC: `300000${index}`,
+    NOMBRE: `Auxiliar ${index + 1}`,
+    CARGO: "Auxiliar",
     CONTRATISTA: "Logísticos",
   })),
   { CC: "10000101", NOMBRE: "Carlos Mendoza", CARGO: "Conductor", CONTRATISTA: "Logísticos" },

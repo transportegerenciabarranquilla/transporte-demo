@@ -9,6 +9,7 @@ import {
 } from "../lib/modulacionStorage";
 import type { AsistenciaRegistro } from "../lib/asistenciaStorage";
 import { normalizeContractorName } from "../lib/contractors";
+import { demoPeopleGroups } from "../lib/demoData";
 import type { Vehiculo } from "../seguimiento/types";
 import { loadSeguimientoVehiculos } from "../seguimiento/services/vehicleRecords";
 import { initialForm } from "../modulacion/constants";
@@ -210,13 +211,20 @@ export default function RegistroModulacionPage() {
     const trackingPerson = vehiculosSeguimiento.find(
       (vehicle) => String(vehicle.cedulaResponsable || "").replace(/\D/g, "") === cedula,
     );
-    if (trackingPerson) {
+    const demoPerson = demoPeopleGroups()
+      .find((group) => normalizeContractorName(group.name) === normalizeContractorName(form.contratista))
+      ?.people.find((person) => person.cc.replace(/\D/g, "") === cedula);
+    if (trackingPerson || demoPerson) {
       const timeout = window.setTimeout(() => {
         setModuladorError("");
         setLoadingModulador(false);
         setForm((current) => ({
           ...current,
-          personaNombre: trackingPerson.nombreResponsable || trackingPerson.responsable || current.personaNombre,
+          personaNombre:
+            trackingPerson?.nombreResponsable ||
+            trackingPerson?.responsable ||
+            demoPerson?.nombre ||
+            current.personaNombre,
         }));
       }, 0);
       return () => window.clearTimeout(timeout);
@@ -268,7 +276,12 @@ export default function RegistroModulacionPage() {
     String(selectedVehicle.cedulaResponsable || "").replace(/\D/g, "") === form.persona.replace(/\D/g, "")
       ? selectedVehicle.nombreResponsable || selectedVehicle.responsable || ""
       : "";
-  const resolvedPersonaName = form.personaNombre || selectedResponsibleName;
+  const demoPersonaName =
+    demoPeopleGroups()
+      .find((group) => normalizeContractorName(group.name) === normalizeContractorName(form.contratista))
+      ?.people.find((person) => person.cc.replace(/\D/g, "") === form.persona.replace(/\D/g, ""))
+      ?.nombre || "";
+  const resolvedPersonaName = form.personaNombre || selectedResponsibleName || demoPersonaName;
 
   function updateField<Key extends keyof FormState>(key: Key, value: FormState[Key]) {
     setForm((current) => ({

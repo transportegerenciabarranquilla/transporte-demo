@@ -38,7 +38,7 @@ export function demoVehicles() {
         fechaDt: date,
         fechaDespacho: date,
         vehiculo: `KLM-${101 + routeIndex}`,
-        responsable,
+        responsable: index < 5 ? responsable : "",
         territorio: index % 2 ? "Barranquilla Norte" : "Barranquilla Sur",
         viaje: "Viaje 1",
         bloque: index < 4 ? "1" : "2",
@@ -63,12 +63,12 @@ export function demoVehicles() {
         causalDesviado: "",
         clasificacionOnTime: index < 5 ? "A TIEMPO" : "FUERA DE META",
         recargue: "NO",
-        cedulaResponsable: `100000${index}`,
-        nombreResponsable: responsable,
-        cedulaAuxiliar1: `200000${index}`,
-        nombreAuxiliar1: `Auxiliar ${index + 1}`,
-        cedulaAuxiliar2: `300000${index}`,
-        nombreAuxiliar2: `Conductor ${index + 1}`,
+        cedulaResponsable: index < 5 ? `100000${index}` : "",
+        nombreResponsable: index < 5 ? responsable : "",
+        cedulaAuxiliar1: index < 5 ? `200000${index}` : "",
+        nombreAuxiliar1: index < 5 ? `Auxiliar ${index + 1}` : "",
+        cedulaAuxiliar2: index < 5 ? `300000${index}` : "",
+        nombreAuxiliar2: index < 5 ? `Conductor ${index + 1}` : "",
         cajasRechazadas: index % 4,
         cajasRefusalFinal: index % 3,
         clientesRechazan: index % 2,
@@ -110,7 +110,7 @@ export function demoModulations() {
 
 export function demoAttendances() {
   const date = demoDate();
-  return demoVehicles().slice(0, 10).map((vehicle, index) => ({
+  return demoVehicles().slice(0, 5).map((vehicle, index) => ({
     id: `asis-demo-${index}`,
     contratista: vehicle.transportista,
     dt: vehicle.transporte,
@@ -191,6 +191,7 @@ export function demoRangeReports() {
     fileName: `rango-${contractor.toLowerCase().replace(/\s/g, "-")}.xlsx`,
     uploadedAt: `${date}T07:15:00-05:00`,
     updatedAt: `${date}T07:15:00-05:00`,
+    rows: [],
     summary: {
       seguimientoDts: 4,
       csvDts: 4,

@@ -87,7 +87,14 @@ export type PuntoCoronaRouteReport = {
 
 export function readPuntoCoronaRouteReports() {
   if (typeof window === "undefined") return [];
-  return readRemoteRecords<PuntoCoronaRouteReport>("/api/punto-corona-routes");
+  return readRemoteRecords<PuntoCoronaRouteReport>("/api/punto-corona-routes").map((report) => ({
+    ...report,
+    rows: Array.isArray(report.rows) ? report.rows : [],
+    summary: {
+      ...report.summary,
+      crews: Array.isArray(report.summary?.crews) ? report.summary.crews : [],
+    },
+  }));
 }
 
 export function savePuntoCoronaRouteReports(records: PuntoCoronaRouteReport[]) {

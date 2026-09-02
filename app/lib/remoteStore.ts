@@ -1,6 +1,6 @@
 "use client";
 
-import { demoAttendances, demoCheckins, demoModulations, demoRangeReports, demoVehicles } from "./demoData";
+import { demoAttendances, demoCheckins, demoDate, demoModulations, demoRangeReports, demoVehicles } from "./demoData";
 import { notifyStorageChange } from "./storageEvents";
 
 const KEYS: Record<string, string> = {
@@ -11,7 +11,7 @@ const KEYS: Record<string, string> = {
   "/api/seguimiento": "bavaria.seguimiento.vehiculos",
 };
 
-const DEMO_VERSION = "v10-logisticos-range-only";
+const DEMO_VERSION = "v13-empty-pending-attendance";
 
 export function clearRemoteCache() {
   notifyStorageChange();
@@ -63,12 +63,14 @@ function merge<T>(current: T[], incoming: T[], getKey: (item: T) => string) {
 }
 
 function seed() {
-  if (typeof window === "undefined" || localStorage.getItem("bavaria.local.version") === DEMO_VERSION) return;
+  if (typeof window === "undefined") return;
+  const dailyVersion = `${DEMO_VERSION}:${demoDate()}`;
+  if (localStorage.getItem("bavaria.local.version") === dailyVersion) return;
 
   localStorage.setItem(KEYS["/api/seguimiento"], JSON.stringify(demoVehicles()));
   localStorage.setItem(KEYS["/api/modulaciones"], JSON.stringify(demoModulations()));
   localStorage.setItem(KEYS["/api/asistencias"], JSON.stringify(demoAttendances()));
   localStorage.setItem(KEYS["/api/checkins"], JSON.stringify(demoCheckins()));
   localStorage.setItem(KEYS["/api/punto-corona-routes"], JSON.stringify(demoRangeReports()));
-  localStorage.setItem("bavaria.local.version", DEMO_VERSION);
+  localStorage.setItem("bavaria.local.version", dailyVersion);
 }
