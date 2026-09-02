@@ -29,6 +29,16 @@ export async function proxy(request: NextRequest) {
   const peopleGroups = demoPeopleGroups();
   const vehicles = demoVehicles();
 
+  if (path === "/api/people/rti") {
+    const records = buildDemoRtiRows();
+    return NextResponse.json({
+      records,
+      total: records.length,
+      duplicateRowsRemoved: { RACOCIMI1: 0, RACOCIMI2: 0 },
+      mode: "demo",
+    });
+  }
+
   if (path === "/api/people/summary") {
     return NextResponse.json({ contractors: peopleGroups });
   }
@@ -141,6 +151,40 @@ function buildAdminSummaries(vehicles: ReturnType<typeof demoVehicles>) {
 function today() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function buildDemoRtiRows() {
+  const references = [
+    { material: "3500213", description: "ENVASE FLINT 330R" },
+    { material: "3500214", description: "ENVASE AMBAR 330R" },
+    { material: "3500250", description: "CANASTA PLASTICA 30 UND" },
+    { material: "3500301", description: "ENVASE LITRO RETORNABLE" },
+  ];
+  const carriers = ["Logisticos", "Punto Corona", "Surti Cervezas"];
+  const responsibles = ["Carlos Mendoza", "Andres Perez", "Miguel Torres", "Luis Herrera", "Jorge Diaz", "Daniel Ruiz"];
+  const now = new Date();
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - (index % 14)));
+    const reference = references[index % references.length];
+    const outbound = 600 + (index % 7) * 90;
+    const performance = [1, 0.98, 0.94, 0.89, 0.83, 0.76][index % 6];
+    const returned = Math.round(outbound * performance);
+    return {
+      Dia: date.getDate(),
+      Mes: date.toLocaleDateString("es-CO", { month: "long" }),
+      Ano: date.getFullYear(),
+      "Nombre RR": responsibles[index % responsibles.length],
+      "Descripcion de envase": reference.description,
+      Material: reference.material,
+      Transportista: carriers[index % carriers.length],
+      "Porcentaje RTI": Math.round((returned / outbound) * 1_000) / 10,
+      "Cajas reales salida": outbound,
+      "Cajas reales retorno": returned,
+      DT: String(1760 + (index % 12)),
+      "Fecha de despacho": `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+    };
+  });
 }
 
 export const config = { matcher: "/api/:path*" };
