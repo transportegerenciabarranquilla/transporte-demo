@@ -1,0 +1,8 @@
+{
+  "$schema": "https://www.schemastore.org/powerpages.config.json",
+  "siteName": "Transporte Barranquilla - Completo",
+  "compiledPath": "dist",
+  "defaultLandingPage": "index.html",
+  "includeSource": false,
+  "bundleFilePatterns": ["*.js", "*.css"]
+}

@@ -1,0 +1,32 @@
+name: Verificar adaptación completa de Power Pages
+
+on:
+  push:
+    paths:
+      - 'power-pages-completo/**'
+      - '.github/workflows/power-pages-completo-build.yml'
+  pull_request:
+    paths:
+      - 'power-pages-completo/**'
+      - '.github/workflows/power-pages-completo-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: power-pages-completo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: power-pages-completo/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

@@ -1,0 +1,500 @@
+import { portalFetch } from "../../../portal/api";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AlertTriangle, Boxes, CalendarDays, Clock3, MapPin, MessageSquareText, PackageCheck, Route, Trash2, Truck, Users, X } from "lucide-react";
+import type { Vehiculo } from "../types";
+import { ROUTE_STATUSES, calculateRouteTime, getProgress, getStatus, hasRecargueValue, isLateDepartureTime, isRouteClockBlockedStatus } from "../utils";
+import { StatusBadge } from "./StatusBadge";
+
+const LATE_DEPARTURE_CAUSES = [
+  "Novedad de cargue",
+  "Novedad de flota",
+  "Ausentismo",
+  "Llegada tarde personal",
+  "Descanso efectivo",
+  "Sincronizacion",
+  "Otros",
+];
+
+export function VehicleDrawer({
+  canEditResponsibleManual,
+  vehicle,
+  now,
+  onClose,
+  onDeleteVehicle,
+  onSaveLateDeparture,
+  onUpdateVehicle,
+  recordKey,
+}: {
+  canEditResponsibleManual: boolean;
+  vehicle: Vehiculo;
+  now: Date;
+  onClose: () => void;
+  onDeleteVehicle: (recordKey: string) => void;
+  onSaveLateDeparture: (recordKey: string, changes: Pick<Vehiculo, "causalSalidaTardia" | "comentarioSalidaTardia">) => Promise<void>;
+  onUpdateVehicle: (recordKey: string, changes: Partial<Vehiculo>) => void;
+  recordKey: string;
+}) {
+  const progress = getProgress(vehicle);
+  const capacity = vehicle.capacidad ? Math.round((vehicle.peso / vehicle.capacidad) * 100) : 0;
+  const routeTime = calculateRouteTime(vehicle, now);
+  const status = getStatus(progress, vehicle);
+  const departureValue = isRouteClockBlockedStatus(status) ? "Pendiente" : vehicle.horaSalida;
+  const onTimeClassification = getOnTimeClassification(vehicle.fechaDt, vehicle.fechaDespacho);
+  const hasRecargue = hasRecargueValue(vehicle.recargue);
+  const requiresLateDepartureDetail = isLateDepartureTime(vehicle.horaSalida);
+  const hasLateDepartureDetail = Boolean(vehicle.causalSalidaTardia && vehicle.comentarioSalidaTardia?.trim());
+  const onUpdateVehicleRef = useRef(onUpdateVehicle);
+
+  useEffect(() => {
+    onUpdateVehicleRef.current = onUpdateVehicle;
+  }, [onUpdateVehicle]);
+
+  function updateVehicle(changes: Partial<Vehiculo>) {
+    onUpdateVehicle(recordKey, changes);
+  }
+
+  function updateStatus(nextStatus: string) {
+    updateVehicle({
+      status: nextStatus,
+      recargue: nextStatus === "Recargue" ? "Si" : vehicle.recargue,
+    });
+  }
+
+  useEffect(() => {
+    const plate = vehicle.vehiculo.trim();
+    if (!plate) return;
+
+    const controller = new AbortController();
+
+    portalFetch(`/api/capacidad-carga?placa=${encodeURIComponent(plate)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        const capacidad = Number(body.capacidad);
+        if (body.error) console.warn("No se pudo cargar capacidad_carga:", body.error);
+        if (!response.ok || !Number.isFinite(capacidad) || capacidad <= 0 || capacidad === vehicle.capacidad) return;
+        onUpdateVehicleRef.current(recordKey, { capacidad });
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [vehicle.vehiculo, vehicle.capacidad, recordKey]);
+
+  return (
+    <div className="fixed inset-0 z-[120] flex justify-end bg-[#10223d]/45 backdrop-blur-sm">
+      <aside className="h-full w-full max-w-md overflow-y-auto bg-white shadow-[0_0_70px_rgba(16,34,61,0.24)]">
+        <div className="sticky top-0 border-b border-slate-200 bg-white/95 p-5 backdrop-blur">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Detalle del vehiculo</p>
+              <h2 className="mt-1 text-2xl font-semibold text-[#10223d]">{vehicle.vehiculo}</h2>
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+                <Truck size={15} className="text-[#0f7c58]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">DT</span>
+                <span className="text-sm font-bold text-[#10223d]">{vehicle.transporte || "-"}</span>
+              </div>
+            </div>
+            <button
+              className="grid h-10 w-10 place-items-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-[#10223d]"
+              onClick={onClose}
+              type="button"
+              aria-label="Cerrar detalle"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <button
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-md border border-red-200 px-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+            onClick={() => onDeleteVehicle(recordKey)}
+            type="button"
+          >
+            <Trash2 size={17} />
+            Borrar DT
+          </button>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <div className="rounded-lg bg-[#10223d] p-5 text-white">
+            <p className="text-sm text-white/65">Avance de ruta</p>
+            <div className="mt-3 flex items-end justify-between">
+              <span className="text-4xl font-semibold text-[#f5bd19]">{progress}%</span>
+              <StatusBadge status={status} />
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-white/15">
+              <div className="h-2 rounded-full bg-[#f5bd19]" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-4 flex items-center gap-2 text-[#10223d]">
+              <Clock3 size={18} />
+              <p className="text-sm font-semibold">Seguimiento de ruta</p>
+            </div>
+
+            <div className="grid gap-3">
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Estado</span>
+                <select
+                  className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-[#f5bd19]"
+                  onChange={(event) => updateStatus(event.target.value)}
+                  value={status}
+                >
+                  {ROUTE_STATUSES.map((routeStatus) => (
+                    <option key={routeStatus} value={routeStatus}>
+                      {routeStatus}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <EditableTime
+                  label="Hora salida"
+                  value={departureValue}
+                  onChange={(value) =>
+                    updateVehicle({
+                      horaSalida: value || "Pendiente",
+                      status: value ? "En ruta" : "Pendiente por salir",
+                    })
+                  }
+                />
+                <EditableTime
+                  label="Hora llegada"
+                  value={vehicle.horaLlegada}
+                  onChange={(value) =>
+                    updateVehicle({
+                      horaLlegada: value || "Pendiente",
+                      status: value ? "Finalizado" : "En ruta",
+                    })
+                  }
+                />
+              </div>
+
+              {requiresLateDepartureDetail && !hasLateDepartureDetail ? (
+                <LateDepartureDetails
+                  comentario={vehicle.comentarioSalidaTardia || ""}
+                  causal={vehicle.causalSalidaTardia || ""}
+                  recordKey={recordKey}
+                  onSave={(changes) => onSaveLateDeparture(recordKey, changes)}
+                />
+              ) : null}
+
+              <div className="rounded-md bg-slate-100 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Tiempo en ruta</p>
+                <p className="mt-1 text-2xl font-semibold text-[#10223d]">{routeTime}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <EditableInfo icon={<CalendarDays size={18} />} label="Mes" value={vehicle.mes} onChange={(value) => updateVehicle({ mes: String(value) })} />
+            <EditableInfo icon={<MapPin size={18} />} label="CD" value={vehicle.cd} onChange={(value) => updateVehicle({ cd: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Llave" value={vehicle.llave} onChange={(value) => updateVehicle({ llave: String(value) })} />
+            <EditableInfo icon={<Truck size={18} />} label="Vehiculo" value={vehicle.vehiculo} onChange={(value) => updateVehicle({ vehiculo: String(value) })} />
+            <EditableInfo icon={<Truck size={18} />} label="Transporte" value={vehicle.transporte} onChange={(value) => updateVehicle({ transporte: String(value) })} />
+            <EditableInfo icon={<MapPin size={18} />} label="Centro" value={vehicle.centro} onChange={(value) => updateVehicle({ centro: String(value) })} />
+            <EditableInfo icon={<Truck size={18} />} label="Cod transportista" value={vehicle.codTransportista} onChange={(value) => updateVehicle({ codTransportista: String(value) })} />
+            <EditableInfo
+              icon={<CalendarDays size={18} />}
+              label="Fecha de DT"
+              type="date"
+              value={vehicle.fechaDt}
+              onChange={(value) => {
+                const fechaDt = String(value);
+                updateVehicle({
+                  fechaDt,
+                  clasificacionOnTime: getOnTimeClassification(fechaDt, vehicle.fechaDespacho),
+                });
+              }}
+            />
+            <EditableInfo
+              icon={<CalendarDays size={18} />}
+              label="Fecha despacho"
+              type="date"
+              value={vehicle.fechaDespacho}
+              onChange={(value) => {
+                const fechaDespacho = String(value);
+                updateVehicle({
+                  fechaDespacho,
+                  clasificacionOnTime: getOnTimeClassification(vehicle.fechaDt, fechaDespacho),
+                });
+              }}
+            />
+            <EditableInfo icon={<Truck size={18} />} label="Transportista" value={vehicle.transportista} onChange={(value) => updateVehicle({ transportista: String(value) })} />
+            {canEditResponsibleManual ? (
+              <EditableInfo icon={<Users size={18} />} label="Responsable" value={vehicle.responsable} onChange={(value) => updateVehicle({ responsable: String(value) })} />
+            ) : (
+              <Info icon={<Users size={18} />} label="Responsable" value={vehicle.responsable || "Sin responsable"} />
+            )}
+            {canEditResponsibleManual ? (
+              <EditableInfo icon={<Users size={18} />} label="Cedula RR" value={vehicle.cedulaResponsable || ""} onChange={(value) => updateVehicle({ cedulaResponsable: String(value) })} />
+            ) : (
+              <Info icon={<Users size={18} />} label="Cedula RR" value={vehicle.cedulaResponsable || "Sin identificar"} />
+            )}
+            <Info icon={<Users size={18} />} label="Nombre RR" value={vehicle.nombreResponsable || "Sin identificar"} />
+            {canEditResponsibleManual ? (
+              <EditableInfo icon={<Users size={18} />} label="Cedula conductor / auxiliar 1" value={vehicle.cedulaAuxiliar1 || ""} onChange={(value) => updateVehicle({ cedulaAuxiliar1: String(value) })} />
+            ) : (
+              <Info icon={<Users size={18} />} label="Cedula conductor / auxiliar 1" value={vehicle.cedulaAuxiliar1 || "Sin identificar"} />
+            )}
+            <Info icon={<Users size={18} />} label="Nombre conductor / auxiliar 1" value={vehicle.nombreAuxiliar1 || "Sin identificar"} />
+            {canEditResponsibleManual ? (
+              <EditableInfo icon={<Users size={18} />} label="Cedula auxiliar 2" value={vehicle.cedulaAuxiliar2 || ""} onChange={(value) => updateVehicle({ cedulaAuxiliar2: String(value) })} />
+            ) : (
+              <Info icon={<Users size={18} />} label="Cedula auxiliar 2" value={vehicle.cedulaAuxiliar2 || "Sin identificar"} />
+            )}
+            <Info icon={<Users size={18} />} label="Nombre auxiliar 2" value={vehicle.nombreAuxiliar2 || "Sin identificar"} />
+            <EditableInfo icon={<MapPin size={18} />} label="Territorio" value={vehicle.territorio} onChange={(value) => updateVehicle({ territorio: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Viaje" value={vehicle.viaje} onChange={(value) => updateVehicle({ viaje: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Bloque" value={vehicle.bloque} onChange={(value) => updateVehicle({ bloque: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Clientes" type="number" value={vehicle.clientes} onChange={(value) => updateVehicle({ clientes: Number(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Visitados" type="number" value={vehicle.visitados} onChange={(value) => updateVehicle({ visitados: Number(value) })} />
+            <EditableInfo icon={<Clock3 size={18} />} label="Tiempo planeado" value={vehicle.tiempoPlaneado || ""} onChange={(value) => updateVehicle({ tiempoPlaneado: String(value) })} />
+            <EditableInfo icon={<PackageCheck size={18} />} label="HL" type="number" value={vehicle.hl} onChange={(value) => updateVehicle({ hl: Number(value) })} />
+            <EditableInfo icon={<Boxes size={18} />} label="Cajas" type="number" value={vehicle.cajas} onChange={(value) => updateVehicle({ cajas: Number(value) })} />
+            <Info icon={<Boxes size={18} />} label="Cajas rechazadas" value={vehicle.cajasRechazadas || 0} />
+            <Info icon={<PackageCheck size={18} />} label="Cajas gestionadas" value={vehicle.cajasGestionadas || 0} />
+            <Info icon={<Boxes size={18} />} label="Tope maximo" value={vehicle.topeMaximoCajas || 0} />
+            <Info icon={<PackageCheck size={18} />} label="Refusal neto" value={`${vehicle.refusal || 0}%`} />
+            <EditableInfo icon={<Boxes size={18} />} label="Peso DT" type="number" value={vehicle.peso} onChange={(value) => updateVehicle({ peso: Number(value) })} />
+            <EditableInfo icon={<Boxes size={18} />} label="Capacidad peso vehiculo" type="number" value={vehicle.capacidad} onChange={(value) => updateVehicle({ capacidad: Number(value) })} />
+            <EditableInfo icon={<PackageCheck size={18} />} label="Validador de peso" value={vehicle.validadorPeso} onChange={(value) => updateVehicle({ validadorPeso: String(value) })} />
+            <Info icon={<Route size={18} />} label="Avance en ruta" value={`${progress}%`} />
+            <EditableInfo icon={<Route size={18} />} label="Meta relevo" value={vehicle.metaRelevo} onChange={(value) => updateVehicle({ metaRelevo: String(value) })} />
+            <EditableInfo icon={<Clock3 size={18} />} label="Hora inicio relevo" value={vehicle.horaInicioRelevo} onChange={(value) => updateVehicle({ horaInicioRelevo: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Clasificacion relevo" value={vehicle.clasificacionRelevo} onChange={(value) => updateVehicle({ clasificacionRelevo: String(value) })} />
+            <EditableInfo icon={<PackageCheck size={18} />} label="Alerta SIF potencial" value={vehicle.alertaSifPotencial} onChange={(value) => updateVehicle({ alertaSifPotencial: String(value) })} />
+            <EditableInfo icon={<Users size={18} />} label="Relevador" value={vehicle.relevador} onChange={(value) => updateVehicle({ relevador: String(value) })} />
+            <EditableInfo icon={<Route size={18} />} label="Causal desviado" value={vehicle.causalDesviado} onChange={(value) => updateVehicle({ causalDesviado: String(value) })} />
+            <Info icon={<Clock3 size={18} />} label="Clasificacion on time" value={onTimeClassification} />
+            <RecargueToggle
+              active={hasRecargue}
+              onToggle={() => updateVehicle(hasRecargue ? { recargue: "No", status: "En ruta" } : { recargue: "Si", status: "Recargue" })}
+            />
+          </div>
+
+          <div className="rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-[#10223d]">Capacidad del vehiculo</p>
+              <span className="text-sm font-semibold text-slate-600">{capacity}%</span>
+            </div>
+            <div className="mt-3 h-2 rounded-full bg-slate-200">
+              <div className="h-2 rounded-full bg-[#0f7c58]" style={{ width: `${capacity}%` }} />
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              {vehicle.peso.toLocaleString("es-CO")} kg de {vehicle.capacidad.toLocaleString("es-CO")} kg disponibles.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function EditableTime({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</span>
+      <input
+        className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-[#f5bd19]"
+        onChange={(event) => onChange(event.target.value)}
+        type="time"
+        value={value === "Pendiente" || value === "-" ? "" : value}
+      />
+    </label>
+  );
+}
+
+function LateDepartureDetails({
+  causal,
+  comentario,
+  onSave,
+  recordKey,
+}: {
+  causal: string;
+  comentario: string;
+  onSave: (changes: Pick<Vehiculo, "causalSalidaTardia" | "comentarioSalidaTardia">) => Promise<void>;
+  recordKey: string;
+}) {
+  const [causeDraft, setCauseDraft] = useState(causal);
+  const [commentDraft, setCommentDraft] = useState(comentario);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const recordKeyRef = useRef(recordKey);
+
+  useEffect(() => {
+    if (recordKeyRef.current === recordKey) return;
+    recordKeyRef.current = recordKey;
+    setCauseDraft(causal);
+    setCommentDraft(comentario);
+  }, [causal, comentario, recordKey]);
+
+  async function saveDetails() {
+    if (!causeDraft || !commentDraft.trim()) return;
+    setSaving(true);
+    setError("");
+
+    try {
+      await onSave({
+        causalSalidaTardia: causeDraft,
+        comentarioSalidaTardia: commentDraft.trim(),
+      });
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const missingLateDepartureCause = !causeDraft;
+  const missingLateDepartureComment = !commentDraft.trim();
+  const canSave = !missingLateDepartureCause && !missingLateDepartureComment;
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div className="mb-3 flex items-start gap-2 text-amber-900">
+        <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold">Salida despues de 7:00</p>
+          <p className="mt-0.5 text-xs font-medium text-amber-800">Selecciona la causal y deja un comentario.</p>
+        </div>
+      </div>
+
+      <div className="grid gap-3">
+        <label className="grid gap-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-900">Causal</span>
+          <select
+            className={`h-11 rounded-md border bg-white px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[#f5bd19] ${
+              missingLateDepartureCause ? "border-red-300" : "border-amber-200"
+            }`}
+            onChange={(event) => setCauseDraft(event.target.value)}
+            required
+            value={causeDraft}
+          >
+            <option value="">Seleccionar causal</option>
+            {LATE_DEPARTURE_CAUSES.map((cause) => (
+              <option key={cause} value={cause}>
+                {cause}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1">
+          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-amber-900">
+            <MessageSquareText size={14} />
+            Comentario
+          </span>
+          <textarea
+            className={`min-h-24 resize-y rounded-md border bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-[#f5bd19] ${
+              missingLateDepartureComment ? "border-red-300" : "border-amber-200"
+            }`}
+            onChange={(event) => setCommentDraft(event.target.value)}
+            placeholder="Escribe el detalle de la salida tardia"
+            required
+            value={commentDraft}
+          />
+        </label>
+
+        <button
+          className="h-10 rounded-md bg-[#0f7c58] px-4 text-sm font-semibold text-white transition hover:bg-[#0b684a] disabled:cursor-not-allowed disabled:bg-slate-300"
+          disabled={!canSave || saving}
+          onClick={saveDetails}
+          type="button"
+        >
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        {error ? <p className="text-xs font-semibold text-red-700">{error}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function EditableInfo({
+  icon,
+  label,
+  onChange,
+  type = "text",
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  onChange: (value: string | number) => void;
+  type?: "date" | "number" | "text";
+  value: string | number;
+}) {
+  const inputValue = type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? "" : value;
+
+  return (
+    <label className="rounded-lg border border-slate-200 bg-white p-4">
+      <span className="mb-3 flex items-center gap-2 text-[#10223d]">
+        {icon}
+        <span className="text-sm font-medium text-slate-500">{label}</span>
+      </span>
+      <input
+        className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#f5bd19] focus:bg-white"
+        min={type === "number" ? 0 : undefined}
+        onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)}
+        type={type}
+        value={inputValue}
+      />
+    </label>
+  );
+}
+
+function Info({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex items-center gap-2 text-[#10223d]">
+        {icon}
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+      </div>
+      <p className="font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function RecargueToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex items-center gap-2 text-[#10223d]">
+        <PackageCheck size={18} />
+        <p className="text-sm font-medium text-slate-500">Recargue</p>
+      </div>
+      <button
+        className={`h-10 w-full rounded-md px-3 text-sm font-semibold text-white transition ${
+          active ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
+        }`}
+        onClick={onToggle}
+        type="button"
+      >
+        {active ? "Tiene recargue" : "Sin recargue"}
+      </button>
+    </div>
+  );
+}
+
+function getOnTimeClassification(fechaDt: string | undefined, fechaDespacho: string | undefined) {
+  const dtDate = toDateKey(fechaDt);
+  const dispatchDate = toDateKey(fechaDespacho);
+
+  if (!dtDate || !dispatchDate) return "Pendiente";
+  return dtDate === dispatchDate ? "On Time" : "No On Time";
+}
+
+function toDateKey(value: string | undefined) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (value.includes("/")) {
+    const [day, month, year] = value.split("/").map(Number);
+    if ([day, month, year].every(Number.isFinite)) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+}
