@@ -1,0 +1,10 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) important;
+
+@theme {
+  --color-ink: #10223d;
+  --color-brand: #12366c;
+  --color-accent: #42d4dc;
+  --color-skywash: #eaf3ff;
+}

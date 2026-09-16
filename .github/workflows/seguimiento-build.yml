@@ -1,0 +1,36 @@
+name: Compilar Seguimiento para Power Pages
+
+on:
+  push:
+    paths:
+      - 'power-pages-seguimiento/**'
+      - '.github/workflows/seguimiento-build.yml'
+  pull_request:
+    paths:
+      - 'power-pages-seguimiento/**'
+      - '.github/workflows/seguimiento-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: power-pages-seguimiento
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: power-pages-seguimiento/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seguimiento-power-pages
+          path: power-pages-seguimiento/dist/
+          if-no-files-found: error
