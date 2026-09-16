@@ -7,6 +7,16 @@ function json(body: unknown, status = 200) { return new Response(JSON.stringify(
 const normal = (value: unknown) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toLowerCase();
 const dt = (value: unknown) => String(value || '').replace(/^DT-?/i, '').replace(/\D/g, '');
 
+function emptyGet(endpoint: string) {
+  if (endpoint === '/api/admin/seguimiento') return json({ summaries: [], records: [], refusalByComRows: [], totalCajas: 0, totalRechazadas: 0, totalGestionadas: 0, totalRefusalFinal: 0, totalRefusal: 0 });
+  if (endpoint === '/api/people/summary') return json({ contractors: [], generatedAt: new Date().toISOString() });
+  if (endpoint === '/api/people/profiles') return json({ profiles: [] });
+  if (endpoint === '/api/personas') return json({ personas: [], persona: null });
+  if (endpoint === '/api/clientes') return json({ cliente: null });
+  if (endpoint === '/api/capacidad-carga') return json({ capacidad: null });
+  return json({ records: [] });
+}
+
 export async function portalFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const raw = input instanceof Request ? input.url : String(input);
   const url = new URL(raw, window.location.origin);
@@ -72,6 +82,7 @@ export async function portalFetch(input: RequestInfo | URL, init?: RequestInit):
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error de Power Pages.';
     const status = error instanceof PortalError ? error.status : 500;
+    if (status === 503 && method === 'GET') return emptyGet(endpoint);
     window.dispatchEvent(new CustomEvent('transport:portal-error', { detail: message }));
     return json({ error: message }, status);
   }

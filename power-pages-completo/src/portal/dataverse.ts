@@ -9,7 +9,7 @@ type StoredRecord = { guid: string; key: string; etag?: string; data: JsonRecord
 
 function table(endpoint: string): TableConfig {
   const config = tables[endpoint];
-  if (!config) throw new PortalError(`Falta configurar la tabla Dataverse para ${endpoint}.`, 503);
+  if (!config) throw new PortalError('Datos no disponibles todavía.', 503);
   for (const column of [config.entitySet, config.id, config.key, config.name, config.payload]) {
     if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(column)) throw new PortalError('Nombre lógico inválido en la configuración.', 503);
   }
